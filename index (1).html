@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Govt Form Photo & Signature Resizer with live Crop, Resize and Compress tools for SSC, Railway, IBPS and State Government exams.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#2563eb">
+
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Govt Form Photo & Signature Resizer with Cropper</title>
+  
+  <!-- jsPDF & CropperJS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-soft: #eff6ff;
+      --success: #059669;
+      --success-soft: #ecfdf5;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --warning: #b45309;
+      --warning-soft: #fffbeb;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --background: #f8fafc;
+      --card: #ffffff;
+      --dark: #0f172a;
+      --radius: 18px;
+      --shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--background); color: var(--text); line-height: 1.6; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    .container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+
+    header { position: sticky; top: 0; z-index: 1000; background: rgba(255, 255, 255, 0.96); border-bottom: 1px solid var(--border); backdrop-filter: blur(14px); }
+    .header-inner { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    #site-logo { display: block; width: auto; max-width: 180px; max-height: 45px; object-fit: contain; flex-shrink: 0; }
+    .brand-title { font-size: 19px; font-weight: 800; line-height: 1.25; white-space: nowrap; }
+    .brand-subtitle { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .secure-mini { background: var(--success-soft); color: var(--success); border: 1px solid #a7f3d0; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+    .hero { text-align: center; padding: 42px 0 24px; }
+    .hero h1 { font-size: clamp(26px, 5vw, 42px); line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+    .hero h1 span { color: var(--primary); }
+    .hero p { max-width: 780px; margin: 0 auto; color: var(--muted); font-size: 15px; }
+
+    .tool-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 40px; }
+    .tool-top { padding: 22px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .tool-top h2 { font-size: 21px; line-height: 1.3; }
+    .tool-top p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .privacy-badge { background: var(--success-soft); color: var(--success); border: 1px solid #a7f3d0; border-radius: 999px; padding: 9px 14px; font-size: 12px; font-weight: 800; text-align: center; }
+    .tool-body { padding: 24px; }
+
+    .upload-area { min-height: 190px; border: 2px dashed #93c5fd; border-radius: 18px; background: #f8fbff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 28px 20px; cursor: pointer; transition: 0.2s ease; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: var(--primary-soft); }
+    .upload-icon { width: 55px; height: 55px; display: grid; place-items: center; border-radius: 16px; background: #dbeafe; color: var(--primary); font-size: 26px; margin-bottom: 11px; }
+    .upload-area h3 { font-size: 17px; margin-bottom: 4px; }
+    .upload-area p { color: var(--muted); font-size: 13px; }
+    .upload-button { border: 0; background: var(--primary); color: #fff; border-radius: 10px; padding: 10px 18px; margin-top: 13px; font-weight: 800; }
+    #fileInput { display: none; }
+
+    /* Cropper Container */
+    .cropper-wrapper { display: none; margin-top: 20px; border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: #fff; }
+    .cropper-wrapper.show { display: block; }
+    .cropper-container-inner { max-height: 420px; width: 100%; overflow: hidden; background: #000; border-radius: 12px; }
+    .cropper-container-inner img { max-width: 100%; display: block; }
+    .cropper-toolbar { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .crop-action-btn { border: 1px solid var(--border); background: #f8fafc; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 700; color: #334155; transition: 0.2s; }
+    .crop-action-btn:hover { background: var(--primary-soft); border-color: #93c5fd; color: var(--primary); }
+
+    .section-title { font-size: 15px; font-weight: 800; margin: 24px 0 12px; }
+
+    .preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .preset-button { border: 1px solid var(--border); background: #fff; border-radius: 12px; padding: 13px 11px; text-align: left; transition: 0.2s ease; }
+    .preset-button:hover { border-color: #93c5fd; background: #f8fbff; }
+    .preset-button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08); }
+    .preset-name { display: block; font-size: 13px; font-weight: 800; }
+    .preset-details { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+
+    .controls-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .field label { display: block; font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; }
+    .input-wrap { position: relative; }
+    .field input { width: 100%; height: 45px; border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 0 52px 0 13px; color: var(--text); outline: none; }
+    .field input:focus, .format-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .unit { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); color: var(--muted); font-size: 12px; pointer-events: none; }
+
+    .format-row { margin-top: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .format-label { color: #334155; font-size: 12px; font-weight: 800; }
+    .format-select { height: 40px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; background: #fff; color: var(--text); outline: none; }
+
+    .process-button { width: 100%; min-height: 51px; border: 0; border-radius: 12px; margin-top: 20px; background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; font-weight: 800; font-size: 15px; box-shadow: 0 10px 23px rgba(37, 99, 235, 0.2); transition: 0.2s; }
+    .process-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 13px 28px rgba(37, 99, 235, 0.27); }
+    .process-button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+    .status { display: none; margin-top: 15px; border-radius: 11px; padding: 12px 14px; font-size: 13px; }
+    .status.show { display: block; }
+    .status.info { background: var(--primary-soft); color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status.success { background: var(--success-soft); color: #047857; border: 1px solid #a7f3d0; }
+    .status.warning { background: var(--warning-soft); color: var(--warning); border: 1px solid #fde68a; }
+    .status.error { background: var(--danger-soft); color: var(--danger); border: 1px solid #fecaca; }
+
+    .results { display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .results.show { display: block; }
+    .results h2 { font-size: 20px; margin-bottom: 15px; }
+    .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .preview-card { border: 1px solid var(--border); border-radius: 16px; padding: 15px; background: #fff; }
+    .preview-card h3 { font-size: 14px; margin-bottom: 10px; }
+    .image-preview { width: 100%; height: 280px; border-radius: 12px; background: linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; overflow: hidden; }
+    .image-preview img { max-width: 100%; max-height: 100%; display: block; object-fit: contain; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .detail { padding: 8px 10px; background: #f8fafc; border-radius: 99px; }
+    .detail-label { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .detail-value { display: block; font-size: 13px; font-weight: 800; margin-top: 1px; }
+
+    .download-button { width: 100%; min-height: 51px; border: 0; border-radius: 12px; background: var(--success); color: #fff; margin-top: 18px; font-size: 15px; font-weight: 800; transition: 0.2s; }
+    .download-button:hover:not(:disabled) { background: #047857; transform: translateY(-1px); }
+
+    footer { background: var(--dark); color: #cbd5e1; padding: 34px 0 20px; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; align-items: start; }
+    .footer-title { color: #fff; font-size: 17px; font-weight: 800; margin-bottom: 7px; }
+    .footer-description { color: #94a3b8; font-size: 13px; max-width: 600px; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 16px; }
+    .footer-links a { color: #cbd5e1; font-size: 13px; transition: color 0.2s; }
+    .footer-links a:hover { color: #fff; }
+    .copyright { text-align: center; border-top: 1px solid #1e293b; margin-top: 25px; padding-top: 17px; color: #64748b; font-size: 12px; }
+
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -3px; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) { .preset-grid { grid-template-columns: repeat(2, 1fr); } .footer-grid { grid-template-columns: 1fr; } .footer-links { justify-content: flex-start; } }
+    @media (max-width: 720px) { .secure-mini, .brand-subtitle { display: none; } .brand-title { font-size: 16px; white-space: normal; } #site-logo { max-height: 40px; max-width: 125px; } .hero { padding: 30px 0 20px; } .tool-top { flex-direction: column; align-items: flex-start; } .privacy-badge { width: 100%; border-radius: 12px; } .controls-grid, .preview-grid { grid-template-columns: 1fr; } .tool-body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-inner">
+      <a href="index.html" class="brand">
+        <img src="logo.png" alt="Website Logo" id="site-logo">
+        <div class="brand-text">
+          <div class="brand-title">Govt Exam Resizer & Cropper</div>
+          <div class="brand-subtitle">Crop, Resize & Compress for Govt Exams</div>
+        </div>
+      </a>
+      <div class="secure-mini">🔒 100% Client-Side</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Photo & Signature <span>Cropper & Resizer</span></h1>
+        <p>Upload your image, crop the exact area, adjust dimensions and compress to required KB size safely in your browser.</p>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="tool-card">
+        <div class="tool-top">
+          <div>
+            <h2>Upload & Crop Image</h2>
+            <p>Select preset or enter custom dimensions, then crop your photo or signature.</p>
+          </div>
+          <div class="privacy-badge">🔒 Secure: Processing done locally</div>
+        </div>
+
+        <div class="tool-body">
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">⬆</div>
+            <h3>Drag & Drop your image here</h3>
+            <p>JPG, JPEG, PNG and WEBP supported</p>
+            <button type="button" class="upload-button" id="chooseButton">Choose Image</button>
+            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+          </div>
+
+          <!-- Cropper Section -->
+          <div class="cropper-wrapper" id="cropperWrapper">
+            <div class="section-title" style="margin-top:0;">Crop Your Image (Drag corners or move box)</div>
+            <div class="cropper-container-inner">
+              <img id="imageToCrop" alt="Source for cropping">
+            </div>
+            <div class="cropper-toolbar">
+              <button type="button" class="crop-action-btn" id="rotateLeftBtn">↺ Rotate Left</button>
+              <button type="button" class="crop-action-btn" id="rotateRightBtn">↻ Rotate Right</button>
+              <button type="button" class="crop-action-btn" id="resetCropBtn">Reset Crop</button>
+            </div>
+          </div>
+
+          <div class="section-title">Quick Exam Presets</div>
+          <div class="preset-grid">
+            <button type="button" class="preset-button" data-width="350" data-height="450" data-max="50" data-name="SSC Photo">
+              <span class="preset-name">SSC Photo</span>
+              <span class="preset-details">20–50 KB • 350 × 450 px</span>
+            </button>
+            <button type="button" class="preset-button" data-width="280" data-height="140" data-max="20" data-name="SSC Signature">
+              <span class="preset-name">SSC Signature</span>
+              <span class="preset-details">10–20 KB • 280 × 140 px</span>
+            </button>
+            <button type="button" class="preset-button" data-width="350" data-height="450" data-max="50" data-name="Railway / IBPS Photo">
+              <span class="preset-name">Railway / IBPS Photo</span>
+              <span class="preset-details">20–50 KB • 350 × 450 px</span>
+            </button>
+            <button type="button" class="preset-button" data-width="280" data-height="140" data-max="20" data-name="Railway / IBPS Signature">
+              <span class="preset-name">Railway / IBPS Signature</span>
+              <span class="preset-details">10–20 KB • 280 × 140 px</span>
+            </button>
+          </div>
+
+          <div class="section-title">Output Controls & KB Size</div>
+          <div class="controls-grid">
+            <div class="field">
+              <label for="widthInput">Width</label>
+              <div class="input-wrap">
+                <input type="number" id="widthInput" min="1" max="10000" value="350">
+                <span class="unit">px</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="heightInput">Height</label>
+              <div class="input-wrap">
+                <input type="number" id="heightInput" min="1" max="10000" value="450">
+                <span class="unit">px</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="maxSizeInput">Target Max Size</label>
+              <div class="input-wrap">
+                <input type="number" id="maxSizeInput" min="1" max="2048" step="1" value="50">
+                <span class="unit">KB</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="format-row">
+            <span class="format-label">Output Format:</span>
+            <select id="formatSelect" class="format-select">
+              <option value="jpg" selected>JPG (.jpg)</option>
+              <option value="jpeg">JPEG (.jpeg)</option>
+              <option value="png">PNG (.png)</option>
+              <option value="webp">WEBP (.webp)</option>
+              <option value="pdf">PDF (.pdf)</option>
+            </select>
+          </div>
+
+          <button type="button" class="process-button" id="processButton" disabled>Crop, Resize & Compress</button>
+          <div class="status" id="status" role="status" aria-live="polite"></div>
+
+          <div class="results" id="results">
+            <h2>Final Preview & Output</h2>
+            <div class="preview-grid">
+              <div class="preview-card">
+                <h3>Cropped Image</h3>
+                <div class="image-preview">
+                  <img id="originalPreview" alt="Cropped preview">
+                </div>
+                <div class="details">
+                  <div class="detail">
+                    <span class="detail-label">Dimensions</span>
+                    <span class="detail-value" id="originalDimensions">—</span>
+                  </div>
+                  <div class="detail">
+                    <span class="detail-label">Initial Size</span>
+                    <span class="detail-value" id="originalSize">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="preview-card">
+                <h3>Final Compressed Output</h3>
+                <div class="image-preview">
+                  <img id="outputPreview" alt="Compressed output">
+                </div>
+                <div class="details">
+                  <div class="detail">
+                    <span class="detail-label">Dimensions</span>
+                    <span class="detail-value" id="outputDimensions">—</span>
+                  </div>
+                  <div class="detail">
+                    <span class="detail-label">Final Size</span>
+                    <span class="detail-value" id="outputSize">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="download-button" id="downloadButton" disabled>⬇ Download Final File</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-title">Govt Form Resizer & Cropper</div>
+          <p class="footer-description">Fast and secure browser utility for photo/signature cropping and compression.</p>
+        </div>
+        <nav class="footer-links">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms & Conditions</a>
+        </nav>
+      </div>
+      <div class="copyright">© <span id="currentYear"></span> Govt Form Photo & Signature Resizer. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      "use strict";
+      const fileInput = document.getElementById("fileInput");
+      const uploadArea = document.getElementById("uploadArea");
+      const chooseButton = document.getElementById("chooseButton");
+      const processButton = document.getElementById("processButton");
+      const downloadButton = document.getElementById("downloadButton");
+      const widthInput = document.getElementById("widthInput");
+      const heightInput = document.getElementById("heightInput");
+      const maxSizeInput = document.getElementById("maxSizeInput");
+      const formatSelect = document.getElementById("formatSelect");
+      const statusBox = document.getElementById("status");
+      const results = document.getElementById("results");
+      const imageToCrop = document.getElementById("imageToCrop");
+      const cropperWrapper = document.getElementById("cropperWrapper");
+      
+      const originalPreview = document.getElementById("originalPreview");
+      const outputPreview = document.getElementById("outputPreview");
+      const originalDimensions = document.getElementById("originalDimensions");
+      const originalSize = document.getElementById("originalSize");
+      const outputDimensions = document.getElementById("outputDimensions");
+      const outputSize = document.getElementById("outputSize");
+
+      let cropper = null;
+      let outputBlob = null;
+      let outputExtension = "jpg";
+      let originalPreviewUrl = null;
+      let outputPreviewUrl = null;
+
+      document.getElementById("currentYear").textContent = new Date().getFullYear();
+
+      function showStatus(message, type) {
+        statusBox.textContent = message;
+        statusBox.className = "status show " + type;
+      }
+
+      function formatKB(bytes) {
+        return (bytes / 1024).toFixed(2) + " KB";
+      }
+
+      function updateCropperAspect() {
+        if (!cropper) return;
+        const w = parseFloat(widthInput.value) || 1;
+        const h = parseFloat(heightInput.value) || 1;
+        cropper.setAspectRatio(w / h);
+      }
+
+      function initCropper(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          imageToCrop.src = e.target.result;
+          cropperWrapper.classList.add("show");
+          if (cropper) {
+            cropper.destroy();
+          }
+          const initialW = parseFloat(widthInput.value) || 350;
+          const initialH = parseFloat(heightInput.value) || 450;
+
+          cropper = new Cropper(imageToCrop, {
+            aspectRatio: initialW / initialH,
+            viewMode: 1,
+            dragMode: 'move',
+            autoCropArea: 0.9,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false,
+          });
+          processButton.disabled = false;
+          results.classList.remove("show");
+          showStatus("Image loaded successfully. Crop the desired area and click Process.", "success");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      uploadArea.addEventListener("click", function (e) { 
+        if (e.target !== chooseButton) fileInput.click();
+      });
+      chooseButton.addEventListener("click", function (e) {
+        e.stopPropagation();
+        fileInput.click();
+      });
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files[0]) initCropper(fileInput.files[0]);
+      });
+
+      document.getElementById("rotateLeftBtn").addEventListener("click", function () { if (cropper) cropper.rotate(-90); });
+      document.getElementById("rotateRightBtn").addEventListener("click", function () { if (cropper) cropper.rotate(90); });
+      document.getElementById("resetCropBtn").addEventListener("click", function () { if (cropper) cropper.reset(); });
+
+      document.querySelectorAll(".preset-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          document.querySelectorAll(".preset-button").forEach(function (btn) { btn.classList.remove("active"); });
+          button.classList.add("active");
+          widthInput.value = button.dataset.width;
+          heightInput.value = button.dataset.height;
+          maxSizeInput.value = button.dataset.max;
+          updateCropperAspect();
+          showStatus(button.dataset.name + " preset selected.", "info");
+        });
+      });
+
+      [widthInput, heightInput].forEach(function (inp) {
+        inp.addEventListener("input", function () {
+          document.querySelectorAll(".preset-button").forEach(function (btn) { btn.classList.remove("active"); });
+          updateCropperAspect();
+        });
+      });
+
+      function canvasToBlob(canvas, mimeType, quality) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error("Canvas export failed.")); }, mimeType, quality);
+        });
+      }
+
+      async function findCompressedImage(canvas, mimeType, targetBytes) {
+        const minQ = 0.01, maxQ = 0.98;
+        const maxBlob = await canvasToBlob(canvas, mimeType, maxQ);
+        if (maxBlob.size <= targetBytes) return { blob: maxBlob };
+        const minBlob = await canvasToBlob(canvas, mimeType, minQ);
+        if (minBlob.size > targetBytes) return null;
+
+        let low = minQ, high = maxQ, bestBlob = minBlob;
+        for (let i = 0; i < 15; i++) {
+          const q = (low + high) / 2;
+          const blob = await canvasToBlob(canvas, mimeType, q);
+          if (blob.size <= targetBytes) { bestBlob = blob; low = q; } else { high = q; }
+        }
+        return { blob: bestBlob };
+      }
+
+      async function generatePdfBlobWithTargetSize(canvas, targetBytes) {
+        const jsPDF = window.jspdf.jsPDF;
+        const buildPdf = (imgQuality) => {
+          const pdf = new jsPDF({
+            orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
+            unit: "mm",
+            format: "a4"
+          });
+          const imgData = canvas.toDataURL("image/jpeg", imgQuality);
+          pdf.addImage(imgData, "JPEG", 15, 15, 180, (180 * canvas.height) / canvas.width);
+          return pdf.output("blob");
+        };
+
+        let minQ = 0.01, maxQ = 0.95;
+        let pdfBlob = buildPdf(maxQ);
+        if (pdfBlob.size <= targetBytes) return pdfBlob;
+
+        pdfBlob = buildPdf(minQ);
+        if (pdfBlob.size > targetBytes) throw new Error("PDF overhead exceeds specified KB size.");
+
+        let low = minQ, high = maxQ, bestBlob = pdfBlob;
+        for (let i = 0; i < 10; i++) {
+          let mid = (low + high) / 2;
+          let testBlob = buildPdf(mid);
+          if (testBlob.size <= targetBytes) { bestBlob = testBlob; low = mid; } else { high = mid; }
+        }
+        return bestBlob;
+      }
+
+      processButton.addEventListener("click", async function () {
+        if (!cropper) return showStatus("Please select and crop an image first.", "error");
+
+        const targetW = parseInt(widthInput.value, 10);
+        const targetH = parseInt(heightInput.value, 10);
+        const targetKB = parseFloat(maxSizeInput.value);
+        if (!targetW || targetW < 1 || targetW > 10000) return showStatus("Invalid width.", "error");
+        if (!targetH || targetH < 1 || targetH > 10000) return showStatus("Invalid height.", "error");
+        if (!targetKB || targetKB <= 0) return showStatus("Invalid target KB.", "error");
+
+        const targetBytes = Math.floor(targetKB * 1024);
+        const formatVal = formatSelect.value;
+
+        processButton.disabled = true;
+        processButton.innerHTML = '<span class="spinner"></span> Processing...';
+
+        try {
+          // Get cropped canvas from cropper with exact desired dimensions
+          const croppedCanvas = cropper.getCroppedCanvas({
+            width: targetW,
+            height: targetH,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+          });
+
+          if (originalPreviewUrl) URL.revokeObjectURL(originalPreviewUrl);
+          originalPreviewUrl = croppedCanvas.toDataURL("image/jpeg", 0.9);
+          originalPreview.src = originalPreviewUrl;
+          originalDimensions.textContent = targetW + " × " + targetH + " px";
+
+          // Calculate initial size of cropped canvas
+          const initialBlob = await canvasToBlob(croppedCanvas, "image/jpeg", 0.9);
+          originalSize.textContent = formatKB(initialBlob.size);
+
+          if (formatVal === "pdf") {
+            outputBlob = await generatePdfBlobWithTargetSize(croppedCanvas, targetBytes);
+            outputExtension = "pdf";
+          } else if (formatVal === "png") {
+            const pngBlob = await canvasToBlob(croppedCanvas, "image/png");
+            if (pngBlob.size > targetBytes) throw new Error("PNG size exceeds target KB. Choose JPG or WEBP.");
+            outputBlob = pngBlob;
+            outputExtension = "png";
+          } else {
+            let mime = (formatVal === "webp") ? "image/webp" : "image/jpeg";
+            let res = await findCompressedImage(croppedCanvas, mime, targetBytes);
+            if (!res) throw new Error("Could not compress to target KB. Increase target KB size.");
+            outputBlob = res.blob;
+            outputExtension = formatVal === "jpeg" ? "jpeg" : (formatVal === "webp" ? "webp" : "jpg");
+          }
+
+          if (outputPreviewUrl) URL.revokeObjectURL(outputPreviewUrl);
+          outputPreviewUrl = formatVal === "pdf" ? originalPreviewUrl : URL.createObjectURL(outputBlob);
+          outputPreview.src = outputPreviewUrl;
+          outputDimensions.textContent = targetW + " × " + targetH + " px";
+          outputSize.textContent = formatKB(outputBlob.size);
+
+          results.classList.add("show");
+          downloadButton.disabled = false;
+
+          if (outputBlob.size < 10 * 1024) {
+            showStatus("Warning: File size is below 10 KB. Check if portal requires minimum 10 KB.", "warning");
+          } else {
+            showStatus("Success! Image cropped, resized and compressed successfully.", "success");
+          }
+        } catch (err) {
+          showStatus(err.message || "Processing error occurred.", "error");
+        } finally {
+          processButton.disabled = false;
+          processButton.textContent = "Crop, Resize & Compress";
+        }
+      });
+
+      downloadButton.addEventListener("click", function () {
+        if (!outputBlob) return;
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(outputBlob);
+        link.href = url;
+        link.download = "govt-cropped-" + Date.now() + "." + outputExtension;
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      });
+    })();
+  </script>
+</body>
+</html>
